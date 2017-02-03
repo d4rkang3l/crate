@@ -47,18 +47,21 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Predicate;
 
 public class Exceptions {
 
     private final static ESLogger LOGGER = Loggers.getLogger(Exceptions.class);
+    private final static Predicate<Throwable> EXCEPTIONS_TO_UNWRAP = throwable ->
+        throwable instanceof RemoteTransportException ||
+        throwable instanceof UncheckedExecutionException ||
+        throwable instanceof UncategorizedExecutionException ||
+        throwable instanceof ExecutionException;
 
-    public static Throwable unwrap(@Nonnull Throwable t) {
+    public static Throwable unwrap(@Nonnull Throwable t, Predicate<Throwable> checkInstanceOf) {
         int counter = 0;
         Throwable result = t;
-        while (result instanceof RemoteTransportException ||
-               result instanceof UncheckedExecutionException ||
-               result instanceof UncategorizedExecutionException ||
-               result instanceof ExecutionException) {
+        while (checkInstanceOf.test(result)) {
             Throwable cause = result.getCause();
             if (cause == null) {
                 return result;
@@ -74,6 +77,10 @@ public class Exceptions {
             result = cause;
         }
         return result;
+    }
+
+    public static Throwable unwrap(@Nonnull Throwable t) {
+        return unwrap(t, EXCEPTIONS_TO_UNWRAP);
     }
 
     public static String messageOf(@Nullable Throwable t) {

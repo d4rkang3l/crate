@@ -5,6 +5,9 @@ Changes for Crate
 Unreleased
 ==========
 
+ - Improved error message when trying to bulk insert values that don't match
+   the column type(s).
+
  - Removed ``OVER`` support from SQL parser because the clause was completely
    ignored when executing the query which led to misleading results.
 

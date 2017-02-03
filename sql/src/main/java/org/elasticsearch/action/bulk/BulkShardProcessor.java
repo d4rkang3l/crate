@@ -29,8 +29,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.crate.Constants;
 import io.crate.exceptions.Exceptions;
 import io.crate.exceptions.JobKilledException;
@@ -50,6 +48,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.transport.TransportException;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -265,8 +264,16 @@ public class BulkShardProcessor<Request extends ShardRequest> {
                     }
 
                     @Override
-                    public void onFailure(Throwable e) {
-                        processFailure(e, shardId, request, Optional.absent());
+                    public void onFailure(final Throwable t) {
+                        Throwable cause = Exceptions.unwrap(
+                            t,
+                            throwable -> throwable instanceof TransportException ||
+                                         throwable instanceof RuntimeException);
+                        Throwable throwable = t;
+                        if (cause instanceof ClassCastException) {
+                            throwable = new IllegalArgumentException("Bulk arguments don't match column types");
+                        }
+                        processFailure(throwable, shardId, request, Optional.absent());
                     }
                 });
                 it.remove();
